@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Куда выбросить?</title>
+<meta name="description" content="Подсказывает, в какой контейнер выбросить упаковку и как её подготовить">
+<meta name="theme-color" content="#3D6B48" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141B16" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Сортировка">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+@font-face{font-family:"Onest";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(fonts/onest-cyrillic-wght-normal.woff2) format("woff2");
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:"Onest";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(fonts/onest-latin-wght-normal.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{
+  --bg:#EDF1EA; --surface:#F8FAF6; --ink:#1E2B22; --muted:#5C6B60; --line:#D3DCD0;
+  --moss:#3D6B48; --moss-soft:#DCE8DA; --kraft:#A5845A;
+  --blue:#2E6CA4; --blue-soft:#DCE8F3; --grey:#6A706B; --grey-soft:#E5E7E4;
+  --amber:#B97A12; --amber-soft:#F5E8CF;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141B16; --surface:#1C251F; --ink:#E4ECE4; --muted:#9AAA9E; --line:#2E3B32;
+    --moss:#7FB58A; --moss-soft:#24382A; --kraft:#C9A877;
+    --blue:#6FA8DC; --blue-soft:#1B2E40; --grey:#A3AAA4; --grey-soft:#272D29;
+    --amber:#E0A84A; --amber-soft:#3A2E17;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141B16; --surface:#1C251F; --ink:#E4ECE4; --muted:#9AAA9E; --line:#2E3B32;
+  --moss:#7FB58A; --moss-soft:#24382A; --kraft:#C9A877;
+  --blue:#6FA8DC; --blue-soft:#1B2E40; --grey:#A3AAA4; --grey-soft:#272D29;
+  --amber:#E0A84A; --amber-soft:#3A2E17;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 64px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+
+header h1{font-size:clamp(30px,6vw,44px);line-height:1.08;font-weight:700;letter-spacing:-.02em;margin:0 0 10px;max-width:15ch}
+header p{color:var(--muted);margin:0 0 24px;max-width:56ch}
+
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;width:max-content;margin-bottom:28px}
+.tabs button{border:0;background:none;padding:8px 16px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--moss);color:var(--surface)}
+
+.search{position:relative;margin-bottom:28px}
+.search input{width:100%;font:inherit;font-size:17px;padding:14px 16px 14px 46px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{outline:none;border-color:var(--moss);box-shadow:0 0 0 3px var(--moss-soft)}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.hits{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.hits:empty{display:none}
+.nohit{color:var(--muted);font-size:15px;margin-top:10px}
+
+.step{margin-bottom:28px}
+.step h2{font-size:15px;font-weight:600;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+.step h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--moss-soft);color:var(--moss);font-size:13px;flex:none}
+
+.mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mat{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.mat .sw{width:28px;height:28px;border-radius:8px}
+.mat b{font-weight:600;font-size:15px}
+.mat small{color:var(--muted);font-size:13px;line-height:1.35}
+.mat[aria-pressed="true"]{border-color:var(--moss);box-shadow:inset 0 0 0 1px var(--moss)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;cursor:pointer;font-size:15px;text-align:left}
+.chip[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--surface)}
+.chip .m{color:var(--muted);font-size:13px;margin-left:6px}
+.chip[aria-pressed="true"] .m{color:inherit;opacity:.8}
+
+.q{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
+.q p{margin:0 0 10px;font-weight:500}
+.q p small{display:block;color:var(--muted);font-weight:400;font-size:13px;margin-top:2px}
+.q .chips{gap:6px}
+.q .chip{font-size:14px;padding:6px 12px}
+
+/* result */
+.result{display:grid;grid-template-columns:120px 1fr;gap:24px;align-items:start;padding:24px;border-radius:20px;background:var(--rsoft);border:1px solid var(--rcol);animation:pop .35s ease-out}
+.result[data-v="recycle"]{--rcol:var(--blue);--rsoft:var(--blue-soft)}
+.result[data-v="mixed"]{--rcol:var(--grey);--rsoft:var(--grey-soft)}
+.result[data-v="special"]{--rcol:var(--amber);--rsoft:var(--amber-soft)}
+.bin{width:120px;height:auto;color:var(--rcol)}
+.result h3{margin:0 0 4px;font-size:26px;line-height:1.15;letter-spacing:-.01em;color:var(--rcol)}
+.result .sub{margin:0 0 14px;font-weight:500}
+.result h4{font-size:14px;margin:16px 0 6px}
+.result ul{margin:0;padding-left:18px}
+.result li{margin:4px 0}
+.result .why{margin:0;color:var(--ink)}
+.result .alt{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--surface);font-size:15px}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.result{animation:none}}
+@media (max-width:540px){.result{grid-template-columns:1fr}.bin{width:84px}}
+
+.reset{margin-top:14px;border:0;background:none;color:var(--moss);cursor:pointer;padding:6px 0;font-weight:500}
+
+/* marks */
+.marks{display:grid;gap:8px}
+.mk{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.code{display:grid;place-items:center;width:64px;height:56px;position:relative;font-weight:700;font-size:14px;line-height:1.1;text-align:center}
+.code svg{position:absolute;inset:0;width:100%;height:100%;color:var(--moss)}
+.code span{position:relative;top:4px}
+.mk b{display:block;font-weight:600}
+.mk small{color:var(--muted);font-size:13px}
+.tag{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.tag.recycle{background:var(--blue-soft);color:var(--blue)}
+.tag.mixed{background:var(--grey-soft);color:var(--grey)}
+.tag.maybe{background:var(--amber-soft);color:var(--amber)}
+.mgroup{font-size:15px;font-weight:600;margin:20px 0 10px}
+.mgroup:first-child{margin-top:0}
+@media (max-width:540px){.mk{grid-template-columns:64px 1fr}.mk .tag{grid-column:2;justify-self:start}}
+
+.install{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--moss-soft);border-radius:14px;padding:12px 14px;margin:-8px 0 24px;font-size:15px}
+.install p{margin:0;flex:1;min-width:200px}
+.install .btn{border:0;background:var(--moss);color:var(--surface);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+.install .x{border:0;background:none;color:var(--muted);cursor:pointer;padding:4px 8px;font-size:20px;line-height:1}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px;max-width:62ch}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Что делать с этой упаковкой?</h1>
+    <p>Выберите, из чего она сделана, и ответьте на пару вопросов — приложение подскажет, в какой контейнер её отправить и как подготовить.</p>
+  </header>
+
+  <div class="install" id="install" hidden>
+    <p id="install-text">Установите приложение на телефон — оно будет открываться с главного экрана и работать без интернета.</p>
+    <button class="btn" id="install-btn" hidden>Установить</button>
+    <button class="x" id="install-x" aria-label="Скрыть">×</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="sort">Сортировка</button>
+    <button role="tab" aria-selected="false" data-tab="marks">Маркировка</button>
+  </div>
+
+  <main id="tab-sort">
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Например: чек, бутылка, фольга, тетрапак" autocomplete="off" aria-label="Найти предмет">
+      <div class="hits" id="hits"></div>
+      <div class="nohit" id="nohit" hidden>Ничего не нашлось. Выберите материал ниже — так тоже получится.</div>
+    </div>
+
+    <section class="step">
+      <h2><span class="n">1</span>Из чего сделан предмет?</h2>
+      <div class="mats" id="mats"></div>
+    </section>
+
+    <section class="step" id="s2" hidden>
+      <h2><span class="n">2</span>Что именно это?</h2>
+      <div class="chips" id="items"></div>
+    </section>
+
+    <section class="step" id="s3" hidden>
+      <h2><span class="n">3</span>Уточните</h2>
+      <div id="qs"></div>
+    </section>
+
+    <section id="out" aria-live="polite"></section>
+  </main>
+
+  <main id="tab-marks" hidden>
+    <p style="margin:0 0 20px;color:var(--muted);max-width:60ch">Маркировка — это треугольник из стрелок с цифрой или буквами. Обычно её печатают на дне или сбоку упаковки.</p>
+    <div id="marklist"></div>
+  </main>
+
+  <footer>
+    Правила рассчитаны на систему из двух контейнеров: синий — вторсырьё, серый — смешанные отходы. Детали зависят от города и оператора: если на контейнере или на сайте вашего регионального оператора написано иначе — ориентируйтесь на них.
+  </footer>
+</div>
+
+<script>
+const MATS = [
+  {id:"plastic", name:"Пластик", hint:"бутылки, контейнеры, пакеты", c:"#7FB3C8"},
+  {id:"paper", name:"Бумага и картон", hint:"коробки, газеты, пакеты", c:"#C4A27A"},
+  {id:"tetra", name:"Тетрапак", hint:"коробки от молока и сока", c:"#D9C9A3"},
+  {id:"glass", name:"Стекло", hint:"бутылки, банки, посуда", c:"#8FBFA0"},
+  {id:"metal", name:"Металл", hint:"банки, крышки, фольга", c:"#A9AFB5"},
+  {id:"other", name:"Другое", hint:"еда, текстиль, техника, батарейки", c:"#B79BB0"}
+];
+
+const PLASTIC_MARK = true;
+
+const ITEMS = [
+  // plastic
+  {id:"p_bottle", mat:"plastic", name:"Бутылка от воды или напитка", k:"пэт pet бутылка вода газировка сок лимонад", base:"recycle", mark:true, clean:true,
+   why:"ПЭТ-бутылки — одно из самых востребованных видов вторсырья: из них делают волокно, новые бутылки и упаковку.",
+   prep:["Слейте остатки жидкости","Сплющите бутылку, чтобы она занимала меньше места","Крышку можно оставить — её тоже переработают"]},
+  {id:"p_flacon", mat:"plastic", name:"Флакон от шампуня или бытовой химии", k:"флакон шампунь гель средство моющее канистра бутыль химия", base:"recycle", mark:true, clean:true,
+   why:"Плотные флаконы обычно делают из ПНД (2) или ПП (5) — оба хорошо перерабатываются.",
+   prep:["Используйте или слейте остатки средства","Снимите дозатор-помпу с пружиной — он идёт в смешанные"]},
+  {id:"p_container", mat:"plastic", name:"Контейнер или лоток от еды", k:"контейнер лоток коробочка салат йогурт стаканчик сметана упаковка еды", base:"recycle", mark:true, clean:true, comp:true,
+   why:"Контейнеры из ПЭТ (1) и ПП (5) принимают охотно. Многое зависит от маркировки и того, насколько упаковка чистая.",
+   prep:["Сполосните от остатков еды","Отделите плёнку или фольгу с крышки, если она снимается"]},
+  {id:"p_bag", mat:"plastic", name:"Пакет или плёнка", k:"пакет майка плёнка стрейч пупырка обёртка", base:"recycle", mark:true, clean:true,
+   why:"Чистая плёнка из ПВД (4) и пакеты-майки (2) перерабатываются, но им важно быть сухими и без остатков еды.",
+   prep:["Убедитесь, что пакет сухой","Сложите несколько пакетов в один — так их легче отсортировать"]},
+  {id:"p_cup", mat:"plastic", name:"Одноразовые стаканчики, вилки, тарелки", k:"одноразовая посуда стакан вилка ложка тарелка пикник", base:"recycle", mark:true, clean:true,
+   why:"Одноразовую посуду делают из ПП (5) или полистирола (6). Первый перерабатывается хорошо, второй — не везде.",
+   prep:["Сполосните","Сложите стаканчики стопкой"]},
+  {id:"p_snack", mat:"plastic", name:"Упаковка от чипсов, кофе, шоколада", k:"чипсы кофе шоколад батончик шуршащая блестящая фольгированная дой-пак пакет снеки корм", base:"mixed",
+   why:"Это многослойный материал: пластик, склеенный с металлизированным слоем. Разделить слои на заводе невозможно."},
+  {id:"p_blister", mat:"plastic", name:"Блистер от таблеток", k:"блистер таблетки пластинка лекарства", base:"mixed",
+   why:"Блистер — это ПВХ, спаянный с фольгой. Ни то, ни другое отдельно извлечь нельзя."},
+  {id:"p_tube", mat:"plastic", name:"Тюбик от зубной пасты или крема", k:"тюбик паста зубная крем мазь", base:"mixed",
+   why:"Большинство тюбиков — многослойный ламинат, а остатки содержимого не вымыть."},
+  {id:"p_toy", mat:"plastic", name:"Игрушка, зубная щётка, ручка", k:"игрушка щётка ручка расчёска бритва фломастер", base:"mixed",
+   why:"Такие вещи состоят из нескольких видов пластика, металла и резины, которые не разделить."},
+  {id:"p_foam", mat:"plastic", name:"Пенопласт", k:"пенопласт пенополистирол упаковка техники лоток мясо", base:"mixed",
+   why:"Пенопласт очень лёгкий и объёмный, обычные сортировочные станции его не берут.",
+   alt:"Крупный чистый упаковочный пенопласт принимают некоторые пункты приёма вторсырья."},
+  // paper
+  {id:"pa_box", mat:"paper", name:"Картонная коробка", k:"коробка картон гофрокартон посылка маркетплейс", base:"recycle", clean:true, strict:true, comp:true,
+   why:"Картон — ценное вторсырьё, из него снова делают картон и бумагу.",
+   prep:["Сложите коробку плоско","Снимите скотч и наклейки, если отходят легко"]},
+  {id:"pa_print", mat:"paper", name:"Газета, журнал, тетрадь, офисная бумага", k:"газета журнал тетрадь бумага листы книга брошюра конверт", base:"recycle",
+   why:"Печатная и офисная бумага хорошо перерабатывается. Скрепки и скобы оставлять можно.",
+   prep:["Снимите пластиковую обложку и металлическую пружину"]},
+  {id:"pa_bag", mat:"paper", name:"Бумажный пакет", k:"бумажный пакет крафт", base:"recycle", clean:true, strict:true,
+   why:"Крафт-бумага — хорошее вторсырьё, если пакет не пропитан жиром.",
+   prep:["Оторвите пластиковые ручки, если они есть"]},
+  {id:"pa_egg", mat:"paper", name:"Лоток для яиц из картона", k:"яйца лоток бугорчатый", base:"recycle",
+   why:"Это уже переработанная бумага, её можно переработать ещё раз."},
+  {id:"pa_pizza", mat:"paper", name:"Коробка от пиццы", k:"пицца коробка доставка", base:"recycle", clean:true, strict:true,
+   why:"Чистый картон пригоден для переработки, но жир портит бумажную массу.",
+   prep:["Уберите остатки еды"],
+   alt:"Если испачкано только дно — оторвите чистую крышку и отправьте её во вторсырьё."},
+  {id:"pa_receipt", mat:"paper", name:"Кассовый чек", k:"чек квитанция талон термобумага", base:"mixed",
+   why:"Чеки печатают на термобумаге с химическим покрытием — она не перерабатывается."},
+  {id:"pa_cup", mat:"paper", name:"Бумажный стаканчик для кофе", k:"стаканчик кофе бумажный чай", base:"mixed",
+   why:"Внутри стаканчик покрыт тонким слоем пластика, чтобы не промокал. Обычные станции его не разделяют.",
+   alt:"Пластиковую крышку от стаканчика можно отправить во вторсырьё отдельно."},
+  {id:"pa_napkin", mat:"paper", name:"Салфетки, бумажные полотенца", k:"салфетка полотенце туалетная бумага платок", base:"mixed",
+   why:"У них слишком короткие волокна, и обычно они грязные — переработать их нельзя."},
+  {id:"pa_photo", mat:"paper", name:"Фотографии, ламинированная бумага, обои", k:"фото фотография ламинированная обои вощёная пергамент", base:"mixed",
+   why:"Покрытие из пластика, воска или фотослоя не отделяется от бумаги."},
+  // tetra
+  {id:"t_pack", mat:"tetra", name:"Коробка от молока, сока, кефира", k:"тетрапак молоко сок кефир сливки пюре tetra pak", base:"recycle", clean:true,
+   why:"Тетрапак состоит из картона, полиэтилена и фольги. Его перерабатывают на специальных заводах, поэтому сдавайте только чистым.",
+   prep:["Промойте водой","Сплющите","Крышку можно оставить"]},
+  // glass
+  {id:"g_bottle", mat:"glass", name:"Бутылка или банка", k:"бутылка банка стекло вино пиво соус варенье консервы", base:"recycle", clean:true, comp:true,
+   why:"Тарное стекло перерабатывается бесконечно и почти без потерь.",
+   prep:["Сполосните","Снимите металлическую крышку — она пойдёт во вторсырьё как металл","Этикетку можно оставить"]},
+  {id:"g_broken", mat:"glass", name:"Кружка, тарелка, керамика", k:"кружка тарелка посуда керамика фарфор разбитая чашка", base:"mixed",
+   why:"Керамика и посудное стекло плавятся при другой температуре и портят партию тарного стекла.",
+   prep:["Осколки заверните в бумагу или плотный пакет"]},
+  {id:"g_window", mat:"glass", name:"Зеркало, оконное стекло, хрусталь", k:"зеркало окно стекло хрусталь ваза", base:"mixed",
+   why:"У этих видов стекла другой состав, на переработку тары их не берут.",
+   alt:"Крупное стекло — к крупногабаритным отходам, а не в контейнер."},
+  {id:"g_bulb", mat:"glass", name:"Лампочка накаливания", k:"лампочка лампа накаливания", base:"mixed",
+   why:"В обычной лампочке нет опасных веществ, но и переработать её нельзя."},
+  // metal
+  {id:"m_can", mat:"metal", name:"Алюминиевая банка от напитка", k:"банка алюминий пиво газировка энергетик", base:"recycle", mark:false,
+   why:"Алюминий — самое ценное вторсырьё: банка может вернуться на полку уже через пару месяцев.",
+   prep:["Сплющите банку"]},
+  {id:"m_tin", mat:"metal", name:"Консервная банка", k:"консервы жесть банка тушёнка горошек корм", base:"recycle", clean:true,
+   why:"Жесть хорошо перерабатывается в новую сталь.",
+   prep:["Промойте от остатков еды","Загните крышку внутрь, чтобы никто не порезался"]},
+  {id:"m_lid", mat:"metal", name:"Металлические крышки и пробки", k:"крышка пробка металл банка твист", base:"recycle",
+   why:"Металлические крышки перерабатываются вместе с остальным металлом.",
+   prep:["Мелкие крышки соберите в одну банку — так они не потеряются на сортировке"]},
+  {id:"m_foil", mat:"metal", name:"Фольга, лоток из фольги", k:"фольга лоток запекание", base:"recycle", clean:true,
+   why:"Чистая алюминиевая фольга перерабатывается, как и банки.",
+   prep:["Скомкайте в плотный шар размером с кулак"]},
+  {id:"m_aerosol", mat:"metal", name:"Аэрозольный баллон", k:"аэрозоль баллон дезодорант лак спрей пена", base:"mixed",
+   why:"Даже «пустой» баллон может содержать газ под давлением, поэтому его не берут на обычную сортировку.",
+   prep:["Не прокалывайте и не нагревайте"],
+   alt:"Некоторые пункты приёма металла берут полностью опустошённые баллоны."},
+  // other
+  {id:"o_food", mat:"other", name:"Остатки еды, очистки", k:"еда очистки кожура органика объедки чайный пакетик кофе гуща", base:"mixed",
+   why:"Органика пачкает вторсырьё и делает его непригодным.",
+   alt:"Если есть компост или контейнер для органики — лучше туда."},
+  {id:"o_hygiene", mat:"other", name:"Подгузники, средства гигиены", k:"подгузник прокладка ватный диск маска бахилы", base:"mixed",
+   why:"Это загрязнённые составные изделия, переработке не подлежат."},
+  {id:"o_cig", mat:"other", name:"Окурки, жвачка", k:"окурок сигарета жвачка", base:"mixed",
+   why:"Их невозможно переработать.", prep:["Убедитесь, что окурок потушен"]},
+  {id:"o_meds", mat:"other", name:"Просроченные лекарства", k:"лекарства таблетки аптека просрочка", base:"mixed",
+   why:"Лекарства нельзя смывать в канализацию.",
+   alt:"Если рядом есть аптека или эко-пункт с приёмом лекарств — отнесите туда."},
+  {id:"o_battery", mat:"other", name:"Батарейки и аккумуляторы", k:"батарейка аккумулятор батарея литий", base:"special",
+   why:"В батарейках тяжёлые металлы и щёлочи, которые отравляют почву и воду.",
+   prep:["Заклейте контакты литиевых батареек скотчем"],
+   place:"Боксы для батареек есть во многих супермаркетах и магазинах электроники."},
+  {id:"o_lamp", mat:"other", name:"Энергосберегающие и люминесцентные лампы", k:"лампа энергосберегающая люминесцентная светодиодная led ртуть", base:"special",
+   why:"Внутри может быть ртуть. Разбитая лампа опасна.",
+   place:"Сдайте в пункт приёма опасных отходов или в экомобиль; светодиодные лампы — вместе с электроникой."},
+  {id:"o_thermo", mat:"other", name:"Ртутный градусник", k:"градусник термометр ртуть", base:"special",
+   why:"Ртуть ядовита, градусник нельзя выбрасывать ни в один контейнер.",
+   place:"Пункты приёма опасных отходов, экомобили. Если разбился — вызовите службу демеркуризации."},
+  {id:"o_electronics", mat:"other", name:"Электроника, провода, зарядки", k:"телефон зарядка провод наушники техника электроника кабель", base:"special",
+   why:"В технике есть и ценные металлы, и опасные компоненты.",
+   place:"Пункты приёма электроники, магазины техники с программами сдачи старых устройств."},
+  {id:"o_textile", mat:"other", name:"Одежда, обувь, текстиль", k:"одежда обувь ткань текстиль вещи носки", base:"special",
+   why:"Целую одежду можно передать дальше, а ткань — переработать в утеплитель и ветошь.",
+   place:"Контейнеры для текстиля, благотворительные фонды, магазины с приёмом вещей.",
+   alt:"Совсем изношенные и грязные вещи — в смешанные."}
+];
+
+const MARKS = [
+  {v:"1", name:"1 · PET (ПЭТ)", note:"бутылки, прозрачные контейнеры", res:"recycle"},
+  {v:"2", name:"2 · HDPE (ПНД)", note:"флаконы, канистры, пакеты-майки", res:"recycle"},
+  {v:"3", name:"3 · PVC (ПВХ)", note:"блистеры, некоторые плёнки", res:"mixed"},
+  {v:"4", name:"4 · LDPE (ПВД)", note:"мягкие пакеты, плёнка", res:"recycle"},
+  {v:"5", name:"5 · PP (ПП)", note:"стаканчики, контейнеры, крышки", res:"recycle"},
+  {v:"6", name:"6 · PS (ПС)", note:"одноразовая посуда, пенопласт", res:"maybe"},
+  {v:"7", name:"7 · OTHER", note:"смесь пластиков, многослойные", res:"mixed"}
+];
+
+const MARK_GROUPS = [
+  {title:"Пластик", items:[
+    {c:"1", n:"PET, ПЭТ", w:"Бутылки, прозрачные лотки", r:"recycle"},
+    {c:"2", n:"HDPE, ПНД", w:"Флаконы, канистры, пакеты-майки", r:"recycle"},
+    {c:"3", n:"PVC, ПВХ", w:"Блистеры, трубы, некоторые плёнки", r:"mixed"},
+    {c:"4", n:"LDPE, ПВД", w:"Мягкие пакеты, стрейч-плёнка", r:"recycle"},
+    {c:"5", n:"PP, ПП", w:"Контейнеры, стаканчики, крышки", r:"recycle"},
+    {c:"6", n:"PS, ПС", w:"Одноразовая посуда, пенопласт", r:"maybe"},
+    {c:"7", n:"OTHER", w:"Смесь пластиков, многослойные пакеты", r:"mixed"}
+  ]},
+  {title:"Бумага и комбинированные", items:[
+    {c:"20", n:"PAP, гофрокартон", w:"Коробки", r:"recycle"},
+    {c:"21", n:"PAP, картон", w:"Упаковка от хлопьев, обуви", r:"recycle"},
+    {c:"22", n:"PAP, бумага", w:"Газеты, бумага, пакеты", r:"recycle"},
+    {c:"81–84", n:"C/PAP", w:"Тетрапак: картон, пластик, фольга", r:"recycle"}
+  ]},
+  {title:"Металл и стекло", items:[
+    {c:"40", n:"FE, сталь", w:"Консервные банки", r:"recycle"},
+    {c:"41", n:"ALU, алюминий", w:"Банки от напитков, фольга", r:"recycle"},
+    {c:"70–74", n:"GL, стекло", w:"Бутылки и банки", r:"recycle"}
+  ]}
+];
+const TAG = {recycle:"Вторсырьё", mixed:"Смешанные", maybe:"Зависит от оператора"};
+
+const state = {mat:null, item:null, mark:"?", clean:"clean", comp:"single"};
+const $ = s => document.querySelector(s);
+
+/* materials */
+const matsEl = $("#mats");
+MATS.forEach(m => {
+  const b = document.createElement("button");
+  b.className = "mat"; b.dataset.id = m.id; b.setAttribute("aria-pressed","false");
+  b.innerHTML = `<span class="sw" style="background:${m.c}"></span><b>${m.name}</b><small>${m.hint}</small>`;
+  b.onclick = () => selectMat(m.id);
+  matsEl.appendChild(b);
+});
+
+function selectMat(id, keepItem){
+  state.mat = id;
+  if(!keepItem) state.item = null;
+  matsEl.querySelectorAll(".mat").forEach(b => b.setAttribute("aria-pressed", b.dataset.id===id));
+  const list = ITEMS.filter(i => i.mat===id);
+  const box = $("#items"); box.innerHTML = "";
+  list.forEach(i => {
+    const c = document.createElement("button");
+    c.className = "chip"; c.textContent = i.name; c.dataset.id = i.id;
+    c.setAttribute("aria-pressed", state.item===i.id);
+    c.onclick = () => selectItem(i.id);
+    box.appendChild(c);
+  });
+  $("#s2").hidden = false;
+  if(list.length===1 && !keepItem){ selectItem(list[0].id); return; }
+  render();
+}
+
+function selectItem(id){
+  const it = ITEMS.find(i => i.id===id);
+  state.item = id; state.mark="?"; state.clean="clean"; state.comp="single";
+  if(state.mat!==it.mat) selectMat(it.mat, true);
+  document.querySelectorAll("#items .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.id===id));
+  renderQs(); render();
+  $("#out").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto":"smooth", block:"nearest"});
+}
+
+function chipGroup(key, opts){
+  return `<div class="chips">${opts.map(([v,l,m]) =>
+    `<button class="chip" data-k="${key}" data-v="${v}" aria-pressed="${state[key]===v}">${l}${m?`<span class="m">${m}</span>`:""}</button>`).join("")}</div>`;
+}
+
+function renderQs(){
+  const it = ITEMS.find(i => i.id===state.item);
+  let h = "";
+  if(it.mark){
+    h += `<div class="q"><p>Какая цифра в треугольнике?<small>Ищите на дне или сбоку. Если не видно — оставьте «Не нашёл».</small></p>${
+      chipGroup("mark", [["?","Не нашёл"], ...MARKS.map(m => [m.v, m.v, m.name.split("· ")[1]])])}</div>`;
+  }
+  if(it.clean){
+    h += `<div class="q"><p>Насколько упаковка чистая?</p>${chipGroup("clean", [
+      ["clean","Чистая"],["rinse","Есть остатки, но можно сполоснуть"],["dirty","Сильно загрязнена, не отмыть"]])}</div>`;
+  }
+  if(it.comp){
+    h += `<div class="q"><p>Есть ли другие материалы?<small>Плёнка на крышке, металлическая крышка, скотч, окошко из пластика.</small></p>${chipGroup("comp", [
+      ["single","Нет, только один"],["sep","Есть, отделяются"],["insep","Есть, не отделить"]])}</div>`;
+  }
+  $("#qs").innerHTML = h;
+  $("#s3").hidden = !h;
+  $("#qs").querySelectorAll(".chip").forEach(c => c.onclick = () => {
+    state[c.dataset.k] = c.dataset.v;
+    $("#qs").querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute("aria-pressed", x===c));
+    render();
+  });
+}
+
+function evaluate(it){
+  let v = it.base, why = [it.why], prep = [...(it.prep||[])], alt = it.alt || "";
+  if(v==="special") return {v, why, prep, alt};
+  if(it.mark && state.mark!=="?"){
+    const m = state.mark;
+    if(m==="3"){ v="mixed"; why=["Маркировка 3 — это ПВХ. Его почти не перерабатывают, а при сжигании он выделяет хлор."]; }
+    else if(m==="7"){ v="mixed"; why=["Маркировка 7 означает смесь пластиков или многослойный материал — переработать его не получится."]; }
+    else if(m==="6"){ alt = "Полистирол (6) принимают не все сортировочные станции. Если ваш оператор его не берёт — в смешанные."; }
+    else { why.push(`Маркировка ${m} — этот пластик перерабатывается.`); }
+  }
+  if(v==="recycle" && it.comp){
+    if(state.comp==="insep"){ v="mixed"; why=["Материалы соединены так, что их не разделить, а смешанное сырьё переработать нельзя."]; }
+    else if(state.comp==="sep"){ prep.unshift("Разделите части и выбросьте каждую по её материалу"); }
+  }
+  if(v==="recycle" && it.clean){
+    if(state.clean==="rinse" && !prep.some(p => /сполосн|промой/i.test(p))){ prep.unshift("Сполосните холодной водой — идеальная чистота не нужна"); }
+    if(state.clean==="dirty"){
+      v="mixed";
+      why=[it.strict
+        ? "Жир и остатки еды пропитывают бумажные волокна, и такую бумагу уже не переработать."
+        : "Сильно загрязнённая упаковка портит соседнее вторсырьё в контейнере."];
+      if(!it.strict) alt = "Если всё-таки удастся отмыть — её можно отправить во вторсырьё.";
+      prep = [];
+    }
+  }
+  return {v, why, prep, alt};
+}
+
+const BIN = (v) => `<svg class="bin" viewBox="0 0 120 140" aria-hidden="true">
+  <rect x="8" y="14" width="104" height="16" rx="5" fill="currentColor"/>
+  <rect x="44" y="6" width="32" height="10" rx="4" fill="currentColor" opacity=".7"/>
+  <path d="M16 34h88l-8 96a8 8 0 0 1-8 7H32a8 8 0 0 1-8-7z" fill="currentColor" opacity=".85"/>
+  ${v==="recycle"
+    ? `<g fill="none" stroke="var(--surface)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 72l10-16 10 16"/><path d="M78 88l-8 14H52"/><path d="M42 98l-6-10 6-10"/></g>`
+    : v==="special"
+    ? `<g fill="var(--surface)"><rect x="56" y="58" width="8" height="34" rx="4"/><circle cx="60" cy="104" r="5"/></g>`
+    : `<g stroke="var(--surface)" stroke-width="5" stroke-linecap="round" opacity=".9"><path d="M44 62v52M60 62v52M76 62v52"/></g>`}
+</svg>`;
+
+const TITLE = {
+  recycle:["В синий контейнер","Это вторсырьё"],
+  mixed:["В серый контейнер","Это смешанные отходы"],
+  special:["Не в контейнер","Сдайте в специальный пункт приёма"]
+};
+
+function render(){
+  const out = $("#out");
+  if(!state.item){ out.innerHTML = ""; return; }
+  const it = ITEMS.find(i => i.id===state.item);
+  const r = evaluate(it);
+  const [t, s] = TITLE[r.v];
+  out.innerHTML = `<div class="result" data-v="${r.v}">
+    ${BIN(r.v)}
+    <div>
+      <h3>${t}</h3>
+      <p class="sub">${s}</p>
+      <p class="why">${r.why.join(" ")}</p>
+      ${it.place ? `<h4>Куда отнести</h4><p class="why">${it.place}</p>` : ""}
+      ${r.prep.length ? `<h4>Как подготовить</h4><ul>${r.prep.map(p=>`<li>${p}</li>`).join("")}</ul>` : ""}
+      ${r.alt ? `<p class="alt">${r.alt}</p>` : ""}
+    </div>
+  </div>
+  <button class="reset" id="reset">Проверить другой предмет</button>`;
+  $("#reset").onclick = resetAll;
+}
+
+function resetAll(){
+  Object.assign(state,{mat:null,item:null,mark:"?",clean:"clean",comp:"single"});
+  matsEl.querySelectorAll(".mat").forEach(b => b.setAttribute("aria-pressed","false"));
+  $("#s2").hidden = true; $("#s3").hidden = true; $("#out").innerHTML = "";
+  $("#q").value = ""; $("#hits").innerHTML = ""; $("#nohit").hidden = true;
+  window.scrollTo({top:0, behavior:"smooth"}); $("#q").focus();
+}
+
+/* search */
+$("#q").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase().replace(/ё/g,"е");
+  const hits = $("#hits"); hits.innerHTML = "";
+  if(q.length<2){ $("#nohit").hidden = true; return; }
+  const words = q.split(/\s+/);
+  const found = ITEMS.filter(i => {
+    const hay = (i.name+" "+i.k).toLowerCase().replace(/ё/g,"е");
+    return words.every(w => hay.includes(w));
+  }).slice(0,8);
+  $("#nohit").hidden = found.length>0;
+  found.forEach(i => {
+    const c = document.createElement("button");
+    c.className = "chip";
+    c.innerHTML = `${i.name}<span class="m">${MATS.find(m=>m.id===i.mat).name.toLowerCase()}</span>`;
+    c.onclick = () => { hits.innerHTML=""; e.target.value=""; selectItem(i.id); };
+    hits.appendChild(c);
+  });
+});
+
+/* marks tab */
+const tri = `<svg viewBox="0 0 64 56" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M32 4 60 52H4z"/></svg>`;
+$("#marklist").innerHTML = MARK_GROUPS.map(g => `<div class="mgroup">${g.title}</div><div class="marks">${
+  g.items.map(m => `<div class="mk"><div class="code">${tri}<span>${m.c}</span></div><div><b>${m.n}</b><small>${m.w}</small></div><span class="tag ${m.r}">${TAG[m.r]}</span></div>`).join("")
+}</div>`).join("");
+
+/* tabs */
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x===b));
+  $("#tab-sort").hidden = b.dataset.tab!=="sort";
+  $("#tab-marks").hidden = b.dataset.tab!=="marks";
+});
+/* PWA */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+(function(){
+  const box = $("#install"), btn = $("#install-btn"), txt = $("#install-text");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  let dismissed = false;
+  try{ dismissed = localStorage.getItem("installDismissed")==="1"; }catch(e){}
+  if(standalone || dismissed) return;
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault(); deferred = e; btn.hidden = false; box.hidden = false;
+  });
+  btn.onclick = async () => {
+    if(!deferred) return;
+    deferred.prompt(); await deferred.userChoice; deferred = null; box.hidden = true;
+  };
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(ios){
+    txt.textContent = "Чтобы установить приложение, нажмите «Поделиться» внизу экрана, затем «На экран „Домой“».";
+    box.hidden = false;
+  }
+  $("#install-x").onclick = () => {
+    box.hidden = true;
+    try{ localStorage.setItem("installDismissed","1"); }catch(e){}
+  };
+  window.addEventListener("appinstalled", () => { box.hidden = true; });
+})();
+</script>
+</body>
+</html>
